@@ -107,7 +107,8 @@ public class DispatcherServlet extends HttpServlet {
 
     private void doScanner(String pacakgeName) {
         // 将所有的.替换成/
-        URL url = this.getClass().getClassLoader().getResource("/" + pacakgeName.replaceAll("\\.", "/"));
+        URL url = this.getClass().getClassLoader().getResource("./" + pacakgeName.replaceAll("\\.", "/"));
+        System.out.println("scanner url : " + url.toString());
         File dir = new File(url.getFile());
         // 递归扫描所有的class文件
         for (File file : dir.listFiles()) {
