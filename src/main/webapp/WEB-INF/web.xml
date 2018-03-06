@@ -11,11 +11,11 @@
   <servlet>
     <servlet-name>dispatcherServlet</servlet-name>
     <servlet-class>com.snow.mvc.servlet.DispatcherServlet</servlet-class>
-    <load-on-startup>1</load-on-startup>
     <init-param>
         <param-name>contextConfigLocation</param-name>
         <param-value>snow-mvc-application.properties</param-value>
     </init-param>
+    <load-on-startup>1</load-on-startup>
   </servlet>
 
   <servlet-mapping>
