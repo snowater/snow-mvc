@@ -1,5 +1,5 @@
 /**
- * @(#) SnowService.java 2018/03/06
+ * @(#) SnowRequestParam.java 2018/03/06
  * Copyright 2018 Snow.com, Inc. All rights reserved.
  */
 package com.snow.mvc.annotation;
@@ -15,8 +15,8 @@ import java.lang.annotation.Target;
  * @version 2018/03/06
  */
 @Documented
-@Target(ElementType.TYPE)
+@Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface SnowService {
+public @interface SnowRequestParam {
     String value() default "";
 }
