@@ -4,8 +4,15 @@
  */
 package com.snow.mvc.controller;
 
+import com.snow.mvc.annotation.SnowAutowired;
 import com.snow.mvc.annotation.SnowController;
 import com.snow.mvc.annotation.SnowRequestMapping;
+import com.snow.mvc.annotation.SnowRequestParam;
+import com.snow.mvc.service.FirstService;
+import com.snow.mvc.util.ToolUtils;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * @author snow
@@ -15,5 +22,17 @@ import com.snow.mvc.annotation.SnowRequestMapping;
 @SnowRequestMapping(value = "/web")
 public class FirstController {
 
+    @SnowAutowired
+    private FirstService firstService;
+
+    @SnowRequestMapping(value = "/get.json")
+    public void get(@SnowRequestParam("name") String name, HttpServletRequest request, HttpServletResponse response) {
+        ToolUtils.responseWriter(response, name);
+    }
+
+    @SnowRequestMapping(value = "/update.json")
+    public void update(@SnowRequestParam("name") String name, HttpServletRequest request, HttpServletResponse response) {
+        ToolUtils.responseWriter(response, name + "update");
+    }
 
 }
