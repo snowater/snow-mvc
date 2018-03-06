@@ -7,7 +7,9 @@ package com.snow.mvc.servlet;
 import com.snow.mvc.annotation.SnowAutowired;
 import com.snow.mvc.annotation.SnowController;
 import com.snow.mvc.annotation.SnowRequestMapping;
+import com.snow.mvc.annotation.SnowRequestParam;
 import com.snow.mvc.annotation.SnowService;
+import com.snow.mvc.util.Play;
 import com.snow.mvc.util.ToolUtils;
 
 import javax.servlet.ServletConfig;
@@ -18,6 +20,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -35,7 +38,7 @@ public class DispatcherServlet extends HttpServlet {
     private Properties properties = new Properties();
     private List<String> classNames = new ArrayList<>();
     private Map<String, Object> ioc = new HashMap<>();
-    private Map<String, Method> handlerMapping = new HashMap<>();
+    private Map<String, HandlerModel> handlerMapping = new HashMap<>();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -234,13 +237,79 @@ public class DispatcherServlet extends HttpServlet {
                 }
 
                 SnowRequestMapping snowRequestMapping = method.getAnnotation(SnowRequestMapping.class);
+                // snowRequestMapping.value()即是SnowRequestMapping上注解的请求地址，不管用户写不写上"/"，我们都为用户补上
                 String realUrl = url + "/" + snowRequestMapping.value();
                 // 替换掉多余的/，将//替换为/
                 realUrl = realUrl.replaceAll("/+", "/");
-                handlerMapping.put(realUrl, method);
+
+                // 获取所有的参数的注解，有几个参数就有几个annotation[]，为什么是数组呢？因为一个参数可以有多个注解......
+                Annotation[][] annotations = method.getParameterAnnotations();
+                // 由于后面的Method的invoke要传入所有参数的值的数组，所以需要保存各参数的位置
+                /*  以get方法的这几个参数为例 @SnowRequestParam("name") String name, HttpServletRequest request, HttpServletResponse response
+                    未来在invoke时，需要传入类似这样的一个数组["snow", request, response]。"snow"即是在Post方法中通过request.getParameter("name")来获取
+                    Request和response这个简单，在post方法中直接就有。
+                    所以我们需要保存@SnowRequestParam上的value值，和它的位置。譬如 name->0,只有拿到了这两个值，
+                    才能将post中通过request.getParameter("name")得到的值放在参数数组的第0个位置。
+                    同理，也需要保存request的位置1，response的位置2
+                 */
+                Map<String, Integer> paramMap = new HashMap<>();
+                //获取方法里的所有参数的参数名（注意：此处使用了ASM.jar 版本为asm-3.3.1，需要在web-inf下建lib文件夹，引入asm-3.3.1.jar，自行下载）
+                //如Controller的get方法，将得到如下数组["name", "request", "response"]
+                String[] paramNames = Play.getMethodParameterNamesByAsm4(clazz, method);
+
+                // 获取所有参数的类型，提取Request和Response的索引
+                Class<?>[] paramTypes = method.getParameterTypes();
+
+                for (int i = 0; i < annotations.length; i++) {
+                    // 获取每个参数上的所有注解
+                    Annotation[] anns = annotations[i];
+                    if (anns.length == 0) {
+                        // 如果没有注解，则是如String abc, Request request这种，没写注解的
+                        // 如果没被SnowRequestParam注解
+                        // 如果是Request或者Response，就直接用类名做key；如果是普通属性，就用属性名
+                        Class<?> type = paramTypes[i];
+                        if (type == HttpServletRequest.class || type == HttpServletResponse.class) {
+                            paramMap.put(type.getName(), i);
+                        } else {
+                            //参数没写@RequestParam注解，只写了String name，那么通过java是无法获取到name这个属性名的
+                            //通过上面asm获取的paramNames来映射
+                            paramMap.put(paramNames[i], i);
+                        }
+                        continue;
+                    }
+
+                    // 有注解，就遍历每个参数上的所有注解
+                    for (Annotation ann : anns) {
+                        // 找到被SnowRequestMapping注解的参数，并取value值
+                        if (ann.annotationType() == SnowRequestParam.class) {
+                            // 也就是@SnowRequestParam("name")上的"name"
+                            String paramName = ((SnowRequestParam)ann).value();
+                            if (!"".equals(paramName.trim())) {
+                                paramMap.put(paramName, i);
+                            }
+                        }
+                    }
+                }
+                HandlerModel handlerModel = new HandlerModel(method, entry.getValue(), paramMap);
+                handlerMapping.put(realUrl, handlerModel);
             }
         }
     }
+
+
+
+    private class HandlerModel {
+        Method method;
+        Object object;
+        Map<String, Integer> paramMap;
+
+        public HandlerModel(Method method, Object object, Map<String, Integer> paramMap) {
+            this.method = method;
+            this.object = object;
+            this.paramMap = paramMap;
+        }
+    }
+
 }
 
 
