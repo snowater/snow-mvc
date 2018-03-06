@@ -14,12 +14,12 @@ import com.snow.mvc.annotation.SnowService;
 public class FirstServiceImpl implements FirstService {
 
     @Override
-    public String get() {
-        return "this is first service get method!";
+    public String get(String name) {
+        return "this is first service get method and your paramater is " + name;
     }
 
     @Override
-    public String udpate(String name) {
+    public String update(String name) {
         return "this is first service update method and your parameter is " + name;
     }
 }

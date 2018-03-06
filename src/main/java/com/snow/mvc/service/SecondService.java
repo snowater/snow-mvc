@@ -9,6 +9,6 @@ package com.snow.mvc.service;
  * @version 2018/03/06
  */
 public interface SecondService {
-    String get();
-    String udpate(String name);
+    String get(String name);
+    String update(String name);
 }

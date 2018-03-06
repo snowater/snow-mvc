@@ -27,12 +27,12 @@ public class FirstController {
 
     @SnowRequestMapping(value = "/get.json")
     public void get(@SnowRequestParam("name") String name, HttpServletRequest request, HttpServletResponse response) {
-        ToolUtils.responseWriter(response, name);
+        ToolUtils.responseWriter(response, firstService.get(name));
     }
 
     @SnowRequestMapping(value = "/update.json")
     public void update(@SnowRequestParam("name") String name, HttpServletRequest request, HttpServletResponse response) {
-        ToolUtils.responseWriter(response, name + "update");
+        ToolUtils.responseWriter(response, firstService.update(name));
     }
 
 }
