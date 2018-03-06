@@ -1,0 +1,7 @@
+/*/.settings/
+/*/target/
+/*/log/
+/**/.gitignore
+/target
+*.iml
+.*
