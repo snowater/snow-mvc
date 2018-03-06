@@ -4,6 +4,8 @@
  */
 package com.snow.mvc.servlet;
 
+import com.snow.mvc.util.ToolUtils;
+
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -25,7 +27,7 @@ public class DispatcherServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        responseWriter(resp, "请求到了");
+        ToolUtils.responseWriter(resp, "请求到了");
     }
 
     @Override
@@ -34,12 +36,5 @@ public class DispatcherServlet extends HttpServlet {
     }
 
 
-    private void responseWriter(HttpServletResponse response, String str) {
-        try {
-            response.setContentType("application/json;charset=utf-8");
-            response.getWriter().write(str);
-        } catch (IOException e) {
-            System.out.println("response write failed!" + e);
-        }
-    }
+
 }
