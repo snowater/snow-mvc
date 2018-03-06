@@ -9,4 +9,6 @@ package com.snow.mvc.service;
  * @version 2018/03/06
  */
 public interface FirstService {
+    String get();
+    String udpate(String name);
 }
