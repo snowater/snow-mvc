@@ -17,9 +17,11 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -41,13 +43,28 @@ public class DispatcherServlet extends HttpServlet {
     private Map<String, HandlerModel> handlerMapping = new HashMap<>();
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        doPost(req, resp);
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        doPost(request, response);
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        ToolUtils.responseWriter(resp, "请求到了");
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // ToolUtils.responseWriter(resp, "请求到了");
+
+        // 根据请求的URL去查找对应的method
+        try {
+            boolean isMatcher = pattern(request, response);
+            if (!isMatcher) {
+                ToolUtils.responseWriter(response, "404 not found");
+            }
+        } catch (Exception e) {
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            e.printStackTrace(new PrintWriter(buf, true));
+            String exceptionMessage = buf.toString();
+            buf.close();
+            ToolUtils.responseWriter(response, "500 Exception \n" + exceptionMessage);
+        }
+
     }
 
     @Override
@@ -296,7 +313,75 @@ public class DispatcherServlet extends HttpServlet {
         }
     }
 
+    private boolean pattern(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        if (handlerMapping.isEmpty()) {
+            return false;
+        }
+        //用户请求地址
+        String requestUri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        //用户写了多个"///"，只保留一个
+        requestUri = requestUri.replace(contextPath, "").replaceAll("/+", "/");
 
+        //遍历HandlerMapping，寻找url匹配的
+        for (Map.Entry<String, HandlerModel> entry : handlerMapping.entrySet()) {
+            if (entry.getKey().equals(requestUri)) {
+                //取出对应的HandlerModel
+                HandlerModel handlerModel = entry.getValue();
+
+                Map<String, Integer> paramIndexMap = handlerModel.paramMap;
+                //定义一个数组来保存应该给method的所有参数赋值的数组
+                Object[] paramValues = new Object[paramIndexMap.size()];
+
+                Class<?>[] types = handlerModel.method.getParameterTypes();
+
+                //遍历一个方法的所有参数[name->0,addr->1,HttpServletRequest->2]
+                for (Map.Entry<String, Integer> param : paramIndexMap.entrySet()) {
+                    String key = param.getKey();
+                    if (key.equals(HttpServletRequest.class.getName())) {
+                        paramValues[param.getValue()] = request;
+                    } else if (key.equals(HttpServletResponse.class.getName())) {
+                        paramValues[param.getValue()] = response;
+                    } else {
+                        //如果用户传了参数，譬如 name= "wolf"，做一下参数类型转换，将用户传来的值转为方法中参数的类型
+                        String parameter = request.getParameter(key);
+                        if (parameter != null) {
+                            paramValues[param.getValue()] = convert(parameter.trim(), types[param.getValue()]);
+                        }
+                    }
+                }
+                //激活该方法
+                handlerModel.method.invoke(handlerModel.object, paramValues);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 将用户传来的参数转换为方法需要的参数类型
+     */
+    private Object convert(String parameter, Class<?> targetType) {
+        if (targetType == String.class) {
+            return parameter;
+        } else if (targetType == Integer.class || targetType == int.class) {
+            return Integer.valueOf(parameter);
+        } else if (targetType == Long.class || targetType == long.class) {
+            return Long.valueOf(parameter);
+        } else if (targetType == Boolean.class || targetType == boolean.class) {
+            if (parameter.toLowerCase().equals("true") || parameter.equals("1")) {
+                return true;
+            } else if (parameter.toLowerCase().equals("false") || parameter.equals("0")) {
+                return false;
+            }
+            throw new RuntimeException("不支持的参数");
+        }
+        else {
+            //TODO 还有很多其他的类型，char、double之类的依次类推，也可以做List<>, Array, Map之类的转化
+            return null;
+        }
+    }
 
     private class HandlerModel {
         Method method;
